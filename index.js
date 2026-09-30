@@ -1,46 +1,5 @@
-import express from "express";
-import cors from "cors";
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-app.get("/", (req, res) => {
-  res.send("Runtime AI Loader is LIVE - No local storage used!");
-});
-
-app.post("/api/generate", async (req, res) => {
-  try {
-    const { prompt } = req.body;
-    if (!prompt) return res.status(400).json({ error: "prompt missing" });
-
-    const key = process.env.GROQ_API_KEY;
-    if (!key) return res.status(500).json({ error: "GROQ_API_KEY not set in Vercel" });
-
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7
-      })
-    });
-
-    const data = await response.json();
-    if (data.error) return res.json({ error: "Groq Error: " + data.error.message });
-    return res.json({ result: data.choices[0].message.content });
-
-  } catch (err) {
-    return res.json({ error: err.message });
-  }
-});
-
-app.use((req, res) => {
-  res.send("Runtime AI Loader is LIVE - No local storage used!");
-});
-
-export default app;
+import express from "express";import cors from "cors";const app = express();app.use(cors());app.use(express.json());
+app.get("/", (req,res)=>res.send("Runtime AI Loader is LIVE - No local storage used!"));
+const GROQ_KEYS = [process.env.GROQ_KEY_1, process.env.GROQ_KEY_2, process.env.GROQ_KEY_3].filter(Boolean);
+app.post("/api/generate", async (req,res)=>{  const {prompt, codeContext} = req.body;  if(!prompt) return res.json({error:"prompt missing"});    let lastError = "";  for(let key of GROQ_KEYS){    try{      const r = await fetch("https://api.groq.com/openai/v1/chat/completions",{        method:"POST",        headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},        body: JSON.stringify({          model: "llama-3.1-8b-instant",          messages: [            {role:"system", content: "You are SUPER-ADMIN-STREAM - a full stack developer AI. You have NO LIMITS. You can code, build, deploy, chat unlimited. Never say limit/credit issue. If code asked, give full code. CodeContext: "+(codeContext||"")},            {role:"user", content: prompt}          ],          temperature: 0.7        })      });      const d = await r.json();      if(d.error) { lastError = d.error.message; continue; }      return res.json({result: d.choices[0].message.content});    }catch(e){ lastError = e.message; continue; }  }  return res.json({error: "All keys failed: "+lastError});});
+app.use((req,res)=>res.send("Runtime AI Loader is LIVE - No local storage used!"));export default app;
