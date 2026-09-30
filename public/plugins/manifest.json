@@ -1,0 +1,5 @@
+{
+  "plugins": ["cat", "fetch", "execution", "processing", "development"],
+  "version": "1.0",
+  "autoUpgrade": true
+}
