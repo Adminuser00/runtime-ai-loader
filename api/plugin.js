@@ -1,36 +1,41 @@
-export default async function handler(req,res){
-  res.setHeader('Access-Control-Allow-Origin','*');
-  res.setHeader('Access-Control-Allow-Methods','POST,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers','Content-Type');
-  if(req.method==='OPTIONS') return res.end();
+export default async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  const {pluginName} = req.body || {};
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  const { pluginName } = req.body || {};
+  const GROQ_KEY = process.env.GROQ_API_KEY1 || process.env.GROQ_API_KEY || process.env.GROQ_KEY_1;
+
+  if (!GROQ_KEY) return res.status(500).json({ error: 'GROQ key missing in Vercel settings.' });
+
   const prompts = {
-    cat: "Create a JS module public/plugins/cat.js with export const status='Cat Layer Active'; export function init(){ console.log('cat ready'); window.addEventListener('run-plugin', e=>{ if(e.detail.name==='cat') alert('CAT layer running - file explorer active') }) }",
-    fetch: "Create JS module public/plugins/fetch.js with fetch layer - handles smart browser fetch with history, cache, form saving. export status and init",
-    execution: "Create JS module public/plugins/execution.js - handles code execution sandbox, runs snippets, captures output",
-    processing: "Create JS module public/plugins/processing.js - handles data processing, OSINT parsing, IP/DNS processing pipeline",
-    development: "Create JS module public/plugins/development.js - handles live dev server, hot reload, file watch"
+    cat: "Create a JS module for file explorer layer: export const status='Cat Active'; export function init(){ console.log('cat layer loaded'); }",
+    fetch: "Create a JS module for browser fetch layer with caching: export const status='Fetch Active'; export function init(){ console.log('fetch layer loaded'); }",
+    execution: "Create a JS module for code execution sandbox: export const status='Execution Active'; export function init(){ console.log('execution layer loaded'); }",
+    processing: "Create a JS module for OSINT data parsing: export const status='Processing Active'; export function init(){ console.log('processing layer loaded'); }",
+    development: "Create a JS module for hot reload server: export const status='Dev Active'; export function init(){ console.log('development layer loaded'); }"
   };
 
-  const GROQ_KEY = process.env.GROQ_KEY_1 || process.env.GROQ_API_KEY;
-  if(!GROQ_KEY) return res.json({error:'GROQ key missing'});
-
-  try{
-    const r = await fetch("https://api.groq.com/openai/v1/chat/completions",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","Authorization":"Bearer "+GROQ_KEY},
+  try {
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_KEY}`
+      },
       body: JSON.stringify({
-        model:"llama-3.1-8b-instant",
-        messages:[{role:"user", content: prompts[pluginName] || `Create JS module for ${pluginName} layer`}],
-        temperature:0.5
+        model: "llama-3.1-8b-instant",
+        messages: [{ role: "user", content: prompts[pluginName] || `Create JS plugin module for ${pluginName}` }],
+        temperature: 0.5
       })
     });
+
     const d = await r.json();
-    const code = d.choices[0].message.content;
-    // Yahan Vercel pe file write nahi ho sakti, isiliye code return karenge aur frontend localStorage me save karega
-    return res.json({result: code, plugin: pluginName, note: "Copy this code to public/plugins/"+pluginName+".js"});
-  }catch(e){
-    return res.json({error:e.message});
+    const code = d.choices?.[0]?.message?.content || "// No code generated";
+    return res.status(200).json({ result: code, plugin: pluginName });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 }
