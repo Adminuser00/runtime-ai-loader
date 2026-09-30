@@ -1,5 +1,5 @@
 // Runtime AI Loader - Auto Plugin Connector
-console.log("Runtime Loader LIVE - No fixed location");
+console.log("Runtime Loader LIVE - S-Clouds");
 const PLUGIN_PATH = "/plugins/";
 
 export async function loadPlugins() {
