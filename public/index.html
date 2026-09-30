@@ -1,16 +1,267 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DevDeck - Runtime Loader</title><style>body{margin:0;background:#050507;color:#eee;font-family:system-ui;display:flex;height:100vh}#side{width:260px;background:#0f0f10;border-right:1px solid #222;padding:12px}#main{flex:1;display:flex;flex-direction:column;overflow:auto}.card{background:#141414;border:1px solid #222;border-radius:12px;padding:12px;margin:6px}.btn{padding:8px 12px;background:#3b82f6;border:none;color:#fff;border-radius:6px;cursor:pointer}#grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}</style></head><body>
-<div id="side"><b>Runtime AI Loader</b><br><small style="color:#666">S Clouds - Auto plugins</small><div id="status" style="margin-top:12px;font-size:11px;color:#0f0">● Loader Active</div><button onclick="upgradeAll()" class="btn" style="width:100%;margin-top:12px;background:#222;border:1px solid #333">Upgrade All Layers</button></div>
-<div id="main"><div style="padding:12px"><h2>DevDeck - All Layers Active</h2><div id="pluginGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div><div class="card"><b>AI Plugin Builder</b><br><input id="pName" placeholder="New layer name e.g. voice, terminal" style="width:70%;padding:8px;background:#000;border:1px solid #333;color:#fff;border-radius:6px"><button onclick="createNew()" class="btn">Create Layer</button><pre id="pOut" style="background:#000;padding:8px;border-radius:6px;min-height:100px;margin-top:8px"></pre></div></div></div>
-<script type="module">
-import {loadPlugins} from '/runtime-loader.js';
-loadPlugins();
-window.upgradeAll = () => { localStorage.clear(); location.reload(); };
-window.createNew = async () => {
-  let name=document.getElementById('pName').value.trim(); if(!name)return;
-  let out=document.getElementById('pOut'); out.textContent='AI creating '+name+' layer...';
-  let r=await fetch('/api/plugin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pluginName:name})});
-  let d=await r.json(); out.textContent=d.result||d.error;
-  // auto save to localStorage as backup
-  localStorage.setItem('plugin_'+name, d.result);
-};
-</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevDeck • Full-Stack Intelligence Workbench</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background: #0a0c10; color: #c9d1d9; font-family: 'Inter', system-ui, sans-serif; }
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .neon-border { border: 1px solid rgba(56, 189, 248, 0.3); box-shadow: 0 0 15px rgba(56, 189, 248, 0.1); }
+        .active-tab { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-left: 3px solid #38bdf8; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #21262d; border-radius: 3px; }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- SIDEBAR NAVIGATION -->
+    <aside class="w-64 glass-panel flex flex-col justify-between p-4 z-20">
+        <div>
+            <!-- Brand Logo -->
+            <div class="flex items-center gap-3 px-2 py-3 mb-6 border-b border-gray-800">
+                <div class="w-9 h-9 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center neon-border">
+                    <i class="fa-solid fa-cube text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-white tracking-wide">DevDeck</h1>
+                    <p class="text-xs text-sky-400 font-mono">JARVIS • ONLINE</p>
+                </div>
+            </div>
+
+            <!-- Nav Links -->
+            <nav class="space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800/50 hover:text-white transition active-tab">
+                    <i class="fa-solid fa-chart-line w-5"></i> Dashboard
+                </button>
+                <button onclick="switchTab('browser')" id="nav-browser" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800/50 hover:text-white transition">
+                    <i class="fa-solid fa-globe w-5"></i> Smart Browser
+                </button>
+                <button onclick="switchTab('osint')" id="nav-osint" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800/50 hover:text-white transition">
+                    <i class="fa-solid fa-shield-halved w-5"></i> OSINT Toolkit
+                </button>
+                <button onclick="switchTab('snippets')" id="nav-snippets" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:bg-gray-800/50 hover:text-white transition">
+                    <i class="fa-solid fa-code w-5"></i> Snippet Vault
+                </button>
+            </nav>
+        </div>
+
+        <!-- System & Status Info -->
+        <div class="border-t border-gray-800 pt-4 text-xs font-mono text-gray-500 space-y-2">
+            <div class="flex justify-between"><span>Status:</span><span class="text-emerald-400">Connected</span></div>
+            <div class="flex justify-between"><span>Engine:</span><span>Groq Llama 3.3</span></div>
+            <button onclick="toggleJarvisDrawer()" class="w-full mt-2 py-2 rounded-lg bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 border border-sky-500/30 font-semibold transition">
+                <i class="fa-solid fa-terminal mr-1"></i> JARVIS Terminal
+            </button>
+        </div>
+    </aside>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="flex-1 flex flex-col bg-[#05070a] relative overflow-hidden">
+        
+        <!-- HEADER BAR -->
+        <header class="h-14 glass-panel border-b border-gray-800 flex items-center justify-between px-6 z-10">
+            <div class="text-sm text-gray-400 flex items-center gap-2">
+                <span class="text-gray-600">Workspace /</span>
+                <span id="current-title" class="text-white font-medium">Dashboard</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> HTTPS Active
+                </span>
+            </div>
+        </header>
+
+        <!-- DYNAMIC VIEWS CONTAINER -->
+        <div class="flex-1 overflow-auto p-6 relative">
+            
+            <!-- VIEW 1: DASHBOARD -->
+            <section id="view-dashboard" class="space-y-6">
+                <div class="glass-panel p-8 rounded-2xl neon-border bg-gradient-to-r from-sky-950/20 to-transparent">
+                    <h2 class="text-3xl font-extrabold text-white tracking-tight mb-2">One deck for browsing, investigating & shipping code.</h2>
+                    <p class="text-gray-400 max-w-2xl text-sm">DevDeck bundles an in-app web browser, real-time OSINT threat intelligence, and reusable snippet repository into your autonomous workspace.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div onclick="switchTab('browser')" class="glass-panel p-6 rounded-xl hover:border-sky-500/50 cursor-pointer transition group">
+                        <i class="fa-solid fa-compass text-2xl text-sky-400 mb-3 group-hover:scale-110 transition-transform"></i>
+                        <h3 class="font-bold text-white mb-1">In-App Browser</h3>
+                        <p class="text-xs text-gray-400">Open URLs, inspect pages, and browse directly inside your workspace.</p>
+                    </div>
+                    <div onclick="switchTab('osint')" class="glass-panel p-6 rounded-xl hover:border-sky-500/50 cursor-pointer transition group">
+                        <i class="fa-solid fa-radar text-2xl text-purple-400 mb-3 group-hover:scale-110 transition-transform"></i>
+                        <h3 class="font-bold text-white mb-1">OSINT Toolkit</h3>
+                        <p class="text-xs text-gray-400">Real-time DNS lookups, IP Intelligence, WHOIS, and HTTP header inspections.</p>
+                    </div>
+                    <div onclick="switchTab('snippets')" class="glass-panel p-6 rounded-xl hover:border-sky-500/50 cursor-pointer transition group">
+                        <i class="fa-solid fa-vault text-2xl text-emerald-400 mb-3 group-hover:scale-110 transition-transform"></i>
+                        <h3 class="font-bold text-white mb-1">Snippet Repository</h3>
+                        <p class="text-xs text-gray-400">Searchable vault for reusable helper code and quick GitHub integration.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 2: SMART BROWSER -->
+            <section id="view-browser" class="hidden h-full flex flex-col space-y-4">
+                <div class="flex gap-2 glass-panel p-2 rounded-xl">
+                    <input id="browser-url" type="text" value="https://example.com" class="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500 font-mono">
+                    <button onclick="loadWebPage()" class="px-5 py-2 bg-sky-500 text-white rounded-lg text-sm font-medium hover:bg-sky-400 transition">Go</button>
+                    <button onclick="window.open(document.getElementById('browser-url').value, '_blank')" class="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg text-sm hover:bg-gray-700">External</button>
+                </div>
+                <div class="flex-1 glass-panel rounded-xl overflow-hidden relative">
+                    <iframe id="browser-frame" src="https://example.com" class="w-full h-full border-none bg-white"></iframe>
+                </div>
+            </section>
+
+            <!-- VIEW 3: OSINT TOOLKIT -->
+            <section id="view-osint" class="hidden space-y-6">
+                <div class="glass-panel p-6 rounded-xl space-y-4">
+                    <h3 class="font-bold text-white text-lg">Real-Time Intelligence Query</h3>
+                    <div class="flex gap-3">
+                        <input id="osint-target" type="text" placeholder="Enter Domain or IP (e.g., google.com or 8.8.8.8)" class="flex-1 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-sky-500 font-mono">
+                        <button onclick="runOsintLookup()" class="px-6 py-2.5 bg-sky-500 text-white rounded-lg text-sm font-semibold hover:bg-sky-400 transition">Analyze Target</button>
+                    </div>
+                </div>
+
+                <div id="osint-results" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-panel p-5 rounded-xl">
+                        <h4 class="text-xs font-mono text-sky-400 mb-3 uppercase tracking-wider">DNS Records (Google DoH)</h4>
+                        <pre id="dns-out" class="text-xs font-mono text-gray-300 bg-gray-950 p-4 rounded-lg overflow-x-auto max-h-60">Run query to fetch live DNS data...</pre>
+                    </div>
+                    <div class="glass-panel p-5 rounded-xl">
+                        <h4 class="text-xs font-mono text-purple-400 mb-3 uppercase tracking-wider">IP Intelligence</h4>
+                        <pre id="ip-out" class="text-xs font-mono text-gray-300 bg-gray-950 p-4 rounded-lg overflow-x-auto max-h-60">Run query to resolve IP location & ISP...</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 4: SNIPPET REPOSITORY -->
+            <section id="view-snippets" class="hidden space-y-6">
+                <div class="flex justify-between items-center">
+                    <input type="text" id="snippet-search" onkeyup="filterSnippets()" placeholder="Search title or code tags..." class="w-72 bg-gray-950 border border-gray-800 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-sky-500">
+                    <button onclick="addSnippetPrompt()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-500 transition">+ New Snippet</button>
+                </div>
+                <div id="snippet-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Dynamic Snippets rendered here -->
+                </div>
+            </section>
+        </div>
+
+        <!-- COLLAPSIBLE JARVIS TERMINAL DRAWER -->
+        <div id="jarvis-drawer" class="h-64 glass-panel border-t border-sky-500/30 flex flex-col hidden transition-all duration-300">
+            <div class="h-9 bg-gray-900/80 px-4 flex items-center justify-between border-b border-gray-800">
+                <span class="text-xs font-mono text-sky-400"><i class="fa-solid fa-terminal mr-2"></i>JARVIS AI Console</span>
+                <button onclick="toggleJarvisDrawer()" class="text-gray-500 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="jarvis-logs" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2">
+                <div class="text-sky-400">> DevDeck Environment Loaded. Autonomous JARVIS Agent listening...</div>
+            </div>
+            <div class="p-2 bg-gray-950 border-t border-gray-800 flex gap-2">
+                <input id="jarvis-input" type="text" placeholder="Type prompt or command..." onkeydown="if(event.key==='Enter') sendJarvisPrompt()" class="flex-1 bg-transparent px-3 text-xs font-mono text-white outline-none">
+                <button onclick="sendJarvisPrompt()" class="px-4 py-1.5 bg-sky-500 text-white rounded text-xs font-semibold">Send</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Tab Switch Logic
+        function switchTab(tab) {
+            ['dashboard', 'browser', 'osint', 'snippets'].forEach(t => {
+                document.getElementById('view-' + t).classList.add('hidden');
+                document.getElementById('nav-' + t).classList.remove('active-tab');
+            });
+            document.getElementById('view-' + tab).classList.remove('hidden');
+            document.getElementById('nav-' + tab).classList.add('active-tab');
+            document.getElementById('current-title').textContent = tab.toUpperCase();
+        }
+
+        // Browser Handler
+        function loadWebPage() {
+            let url = document.getElementById('browser-url').value;
+            if(!url.startsWith('http')) url = 'https://' + url;
+            document.getElementById('browser-frame').src = url;
+        }
+
+        // Real OSINT Lookup Bridge
+        async function runOsintLookup() {
+            const target = document.getElementById('osint-target').value.trim();
+            if(!target) return alert('Target specify karein');
+
+            document.getElementById('dns-out').textContent = 'Fetching Google DoH DNS...';
+            document.getElementById('ip-out').textContent = 'Resolving IP Geo Data...';
+
+            try {
+                const dnsRes = await fetch(`https://dns.google/resolve?name=${target}`);
+                const dnsJson = await dnsRes.json();
+                document.getElementById('dns-out').textContent = JSON.stringify(dnsJson.Answer || dnsJson, null, 2);
+            } catch(e) { document.getElementById('dns-out').textContent = 'DNS Lookup failed'; }
+
+            try {
+                const ipRes = await fetch(`https://ipapi.co/${target}/json/`);
+                const ipJson = await ipRes.json();
+                document.getElementById('ip-out').textContent = JSON.stringify(ipJson, null, 2);
+            } catch(e) { document.getElementById('ip-out').textContent = 'IP Lookup failed'; }
+        }
+
+        // Snippets Storage & Render
+        let snippets = JSON.parse(localStorage.getItem('devdeck_snippets') || '[{"title":"Fetch Timeout","code":"async function fetchWithTimeout(url){\n  const c = new AbortController();\n  setTimeout(()=>c.abort(), 5000);\n  return fetch(url, {signal: c.signal});\n}"}]');
+
+        function renderSnippets() {
+            const grid = document.getElementById('snippet-grid');
+            grid.innerHTML = snippets.map((s, i) => `
+                <div class="glass-panel p-4 rounded-xl space-y-2">
+                    <h4 class="font-bold text-white text-sm">${s.title}</h4>
+                    <pre class="bg-gray-950 p-3 rounded text-xs font-mono text-sky-300 overflow-x-auto">${s.code}</pre>
+                </div>
+            `).join('');
+        }
+        renderSnippets();
+
+        function addSnippetPrompt() {
+            const title = prompt('Snippet Title:');
+            const code = prompt('Paste Code:');
+            if(title && code) {
+                snippets.push({title, code});
+                localStorage.setItem('devdeck_snippets', JSON.stringify(snippets));
+                renderSnippets();
+            }
+        }
+
+        // JARVIS Drawer & AI Execution
+        function toggleJarvisDrawer() {
+            document.getElementById('jarvis-drawer').classList.toggle('hidden');
+        }
+
+        async function sendJarvisPrompt() {
+            const input = document.getElementById('jarvis-input');
+            const text = input.value.trim();
+            if(!text) return;
+
+            const logs = document.getElementById('jarvis-logs');
+            logs.innerHTML += `<div class="text-gray-300"><b>User:</b> ${text}</div>`;
+            input.value = '';
+
+            const responseDiv = document.createElement('div');
+            responseDiv.className = 'text-sky-300 font-mono';
+            responseDiv.textContent = 'JARVIS: Thinking...';
+            logs.appendChild(responseDiv);
+            logs.scrollTop = logs.scrollHeight;
+
+            try {
+                const res = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ prompt: text })
+                });
+                const data = await res.json();
+                responseDiv.textContent = 'JARVIS: ' + (data.result || data.error);
+            } catch(e) {
+                responseDiv.textContent = 'JARVIS: Connection Error';
+            }
+            logs.scrollTop = logs.scrollHeight;
+        }
+    </script>
+</body>
+</html>
