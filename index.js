@@ -12,10 +12,10 @@ app.get("/", (req, res) => {
 app.post("/api/generate", async (req, res) => {
   try {
     const { prompt } = req.body;
-    if (!prompt) return res.json({ error: "prompt missing" });
+    if (!prompt) return res.status(400).json({ error: "prompt missing" });
 
     const key = process.env.GROQ_API_KEY;
-    if (!key) return res.json({ error: "GROQ_API_KEY not set in Vercel" });
+    if (!key) return res.status(500).json({ error: "GROQ_API_KEY not set in Vercel" });
 
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -31,11 +31,7 @@ app.post("/api/generate", async (req, res) => {
     });
 
     const data = await response.json();
-
-    if (data.error) {
-      return res.json({ error: "Groq: " + data.error.message });
-    }
-
+    if (data.error) return res.json({ error: "Groq Error: " + data.error.message });
     return res.json({ result: data.choices[0].message.content });
 
   } catch (err) {
@@ -43,9 +39,7 @@ app.post("/api/generate", async (req, res) => {
   }
 });
 
-// Permanent fix - koi bhi ajeeb URL khule to bhi LIVE dikhe, Cannot GET kabhi na aaye
-app.get("*", (req, res) => {
-  if (req.path.startsWith("/api/")) return res.status(404).json({ error: "API not found" });
+app.use((req, res) => {
   res.send("Runtime AI Loader is LIVE - No local storage used!");
 });
 
