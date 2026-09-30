@@ -1,6 +1,12 @@
-import express from "express";import cors from "cors";import dotenv from "dotenv";dotenv.config();
+import express from "express";import cors from "cors";import dotenv from "dotenv";import { inject } from '@vercel/analytics';
+
+dotenv.config();
+
+// Initialize Vercel Web Analytics
+inject();
 const app = express();app.use(cors());app.use(express.json());
-// Yeh hai tumhara RUNTIME MODEL LOADER - koi file download nahi hogiapp.post("/api/generate", async (req, res) => {  const { prompt } = req.body;
+// Yeh hai tumhara RUNTIME MODEL LOADER - koi file download nahi hogi
+app.post("/api/generate", async (req, res) => {  const { prompt } = req.body;
   try {    // OPTION 1: Groq - Sabse fast aur 100% FREE (Recommended)    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {      method: "POST",      headers: {        "Content-Type": "application/json",        "Authorization": `Bearer ${process.env.GROQ_API_KEY}`      },      body: JSON.stringify({        model: "llama-3.3-70b-versatile", // Free, super fast coding model        messages: [{ role: "user", content: prompt }],        temperature: 0.7      })    });
     const data = await groqRes.json();    if(data.choices) {      return res.json({ result: data.choices[0].message.content, source: "groq-runtime" });    }
     // Fallback: HuggingFace Free Inference    throw new Error("Groq failed, trying HF");
